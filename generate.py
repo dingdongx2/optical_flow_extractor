@@ -64,14 +64,69 @@ def extract_flow(args):
     print('complete:' + flow_path)
     return
 
-def create_paths(base_path, activity):
-    activity_path = os.path.join(base_path, activity) # train/activity
-    rgb_folder = os.makedirs('{}/{}_rgb'.format(activity_path, activity)) # train/activity/activity_rgb
-    flow_folder1 = os.makedirs('{}/{}_flow/u'.format(activity_path, activity)) # train/activity/activity_flow/u
-    flow_folder2 = os.makedirs('{}/{}_flow/v'.format(activity_path, activity)) # train/activity/activity_flow/v
+def create_paths(base_path):
+    # activity_path = os.path.join(base_path, activity) # train/activity
+    # rgb_folder = os.makedirs('{}/{}_rgb'.format(activity_path, activity)) # train/activity/activity_rgb
+    # flow_folder1 = os.makedirs('{}/{}_flow/u'.format(activity_path, activity)) # train/activity/activity_flow/u
+    # flow_folder2 = os.makedirs('{}/{}_flow/v'.format(activity_path, activity)) # train/activity/activity_flow/v
+    save_folder = os.path.join(base_path, "output")
+    src_folder = os.path.join(base_path, "src")
+    c_lists = glob(os.path.join(src_folder,"*"))
+    for cls in c_lists:
+        # v_lists = glob(os.path.join(cls,"*"))
+        cls_name = cls.split("/")[-1]
 
-def vid_to_image(base_path,file,frame_path): # train/       train/test.mp4          train/test/test_rgb/
-    print(base_path, file, frame_path)
+        flow_dir = save_folder + "/flow/" + cls_name
+        frame_dir = save_folder + "/frame/" + cls_name
+        npyflow_dir = save_folder + "/npyflow/" + cls_name
+        rgb_dir = save_folder + "/rgb/" + cls_name
+
+        os.mkdir(flow_dir)
+        os.mkdir(frame_dir)
+        os.mkdir(npyflow_dir)
+        os.mkdir(rgb_dir)
+
+        v_lists = glob(os.path.join(cls, "*"))
+        for v in v_lists:
+            video = v.split("/")[-1][:-4]
+            os.mkdir(os.path.join(flow_dir, video))
+            os.mkdir(os.path.join(frame_dir, video))
+            os.mkdir(os.path.join(npyflow_dir, video))
+            os.mkdir(os.path.join(rgb_dir, video))
+
+
+# def vid_to_image(base_path,file,frame_path): # train/       train/test.mp4          train/test/test_rgb/
+def vid_to_image(video_path, frame_path):
+    print("video path:", video_path)
+    print("frame path:", frame_path)
+
+    cls_lists = glob(os.path.join(video_path, "*"))
+    print("cls lists:", cls_lists)
+    for cls in cls_lists:
+        cls_name = cls.split("/")[-1]
+        save_dir = os.path.join(frame_path, cls_name)
+
+        v_lists = glob(os.path.join(cls, "*"))
+        for v in v_lists:
+            vid_name = v.split("/")[-1][:-4]
+            vidcap = cv2.VideoCapture(v)
+            success, image = vidcap.read()
+            count = 0
+            frame_no = 0
+            print("save frame path:", os.path.join(save_dir, vid_name))
+            while success:
+                vidcap.set(1, frame_no)
+                # print(os.path.join(frame_path,"frame%d.jpg"))
+                cv2.imwrite(os.path.join(os.path.join(save_dir, vid_name), "frame%d.jpg") % count, image)  # save frame as JPEG file
+                success, image = vidcap.read()
+                # print('Read a new frame: ', success)
+                count += 1
+                frame_no += 1
+
+
+
+    '''
+    # print("base path/file/frame_path", base_path, file, frame_path)
     folder=file.split('.')[0]
     #print(folder)
     #os.mkdir(os.path.join(base_path,folder))
@@ -88,6 +143,7 @@ def vid_to_image(base_path,file,frame_path): # train/       train/test.mp4      
             #print('Read a new frame: ', success)
             count += 1
             frame_no+=1
+    '''
 
 ## Create npy file for rgb files as described in deepmind I3D
 def norm_rgb(rgb_path, nchannel):
@@ -95,9 +151,10 @@ def norm_rgb(rgb_path, nchannel):
     npy_file = []
     frames = glob(os.path.join(rgb_path, '*.jpg'))
     frames.sort()
-    print(len(frames))
+    # print(len(frames))
+    print("rgb_path:", rgb_path)
     for frame in frames:
-        img = cv2.imread(os.path.join(frame_path, frame))
+        img = cv2.imread(frame)
         img_new = (cv2.resize(img, (224, 224))).astype(float)
         img_norm = np.divide(2 * (img_new - img_new.min()), (img_new.max() - img_new.min())) - 1
 
@@ -129,54 +186,131 @@ def norm_flow(rgb_path, nchannel):
     npy_file = ((2 * (npy_file - npy_file.min()) / (npy_file.max() - npy_file.min())) - 1)
     return npy_file
 
+def mkdir(dir):
+    print("> mkdir", dir)
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+    else:
+        pass
 
 if __name__ == "__main__":
+#     01. create class folder
+    base_path = "/home/veryyoung/문서/optical_flow_extractor/data_test"
+    src_path = os.path.join(base_path, "src")
+    output_path = os.path.join(base_path, "output")
+
+    cls_lists = glob(os.path.join(src_path, "*"))
+    print("cls lists:", cls_lists, "\n")
+
+    for cls in cls_lists:
+        cls_name = cls.split("/")[-1]
+        # output에 클래스 폴더 생성
+        n_cls_path = os.path.join(output_path, cls_name)
+        mkdir(n_cls_path)
+
+        video_lists = glob(os.path.join(cls, "*"))
+        print("in class {}".format(cls))
+        for v in video_lists:
+            vid_name = v.split("/")[-1]
+            print("\t> video:", vid_name)
+            mkdir(os.path.join(n_cls_path, vid_name))
+
+    print("==*== mkdir fin! ==*==\n")
+
+#     02. calculate optical flow
+    for cls in cls_lists:
+        cls_name = cls.split("/")[-1]
+        n_cls_path = os.path.join(output_path, cls_name)
+
+        video_lists = glob(os.path.join(cls, "*"))
+
+        for j, v in enumerate(video_lists):
+            vid_name = v.split("/")[-1]
+            des_path = os.path.join(n_cls_path, vid_name)
+            print("cal OF) in clss {}, video name({}/{}): {}".format(cls_name, j, len(video_lists), vid_name))
+
+            flow = cal_for_frames(v)
+            # save flow
+            npy_flow = save_flow(flow)
+
+            # save at each dir
+            np_file_rgb = norm_rgb(v, 3)
+            np.save(des_path + '/rgb.npy', np_file_rgb)
+            np_file_flow = norm_flow(v, 3)
+            np.save(des_path + '/flow.npy', np_file_flow)
+            npy_file = np.reshape(np.asarray(npy_flow), (1, len(flow), 224, 224, 2)).astype(float)
+            np.save(des_path + '/npyflow.npy', npy_file)
+            print("")
+
+
+
+
+
+#     04. save at each folder
+
+'''
+if __name__ == "__main__":
     #name of activity what is in the video. This is just for purpose of creating proper folders.
-    activity='class'
+    # activity='class'
 
     #This is the path where your video is kept. for simplicity rename the video same as activity. for eg. laughing.mp4
-    base_path = "/home/veryyoung/문서/optical_flow_extractor/data/Moments/"
+    base_path = "/home/veryyoung/문서/optical_flow_extractor/test/"
     # base_path='/home/veryyoung/문서/optical_flow_extractor/test'
 
-    create_paths(base_path + "/src", activity) # rgb, flow folder/u,v mkdir
+    create_paths(base_path) # rgb, flow folder/u,v mkdir
 
-    frame_path='/home/veryyoung/문서/flow/train/{}/{}_rgb/'.format(activity, activity) # rgb folder
+    # rgb dir
+    frame_path = "/home/veryyoung/문서/optical_flow_extractor/test/output/frame"
+    video_path = "/home/veryyoung/문서/optical_flow_extractor/test/src"
+    # frame_path='/home/veryyoung/문서/flow/train/{}/{}_rgb/'.format(activity, activity) # rgb folder
     # flow_path='/home/veryyoung/문서/flow/train/{}/{}_flow/{}'.format(activity, activity, {}) # optical flow folder
 
-    vid_to_image(base_path, os.path.join(base_path,activity+'.mp4'), frame_path) # video -> rgb img save
+    # vid_to_image(base_path, os.path.join(base_path,activity+'.mp4'), frame_path) # video -> rgb img save
+    vid_to_image(video_path, frame_path)
 
     # flow_path.format('u')
+    rgb_save_dir = base_path + "output/rgb"
+    flow_save_dir = base_path + "output/flow"
+    npyflow_save_dir = base_path + "output/npyflow"
 
-    flow = cal_for_frames(frame_path) # calculate optical flow
+    cls_lists = glob(os.path.join(frame_path, "*"))
+    for cls in cls_lists:
+        v_lists = glob(os.path.join(cls, "*"))
+        cls_name = cls.split("/")[-1]
+        for v in v_lists:
+            flow = cal_for_frames(v) # calculate optical flow
 
-    #save flows to folders u and v
-    # npy_flow = save_flow(flow, flow_path)
-    npy_flow = save_flow(flow)
+            #save flows to folders u and v
+            # npy_flow = save_flow(flow, flow_path)
+            npy_flow = save_flow(flow)
 
-    # scaler = MinMaxScaler(feature_range=(-1,1))
-    # print(scaler.transform(data))
+            # scaler = MinMaxScaler(feature_range=(-1,1))
+            # print(scaler.transform(data))
 
+            ##################################
 
+            # SAVE 01
+            video_name = v.split("/")[-1][:-4]
 
-    ##################################
+            np_file_rgb=norm_rgb(v,3)
+            np.save(rgb_save_dir + '{}/{}.npy'.format(cls_name, video_name), np_file_rgb)
+            print("{} rgb stream saved".format(rgb_save_dir+cls_name+"/"+video_name))
+            np_file_flow=norm_flow(v,3)
+            np.save(flow_save_dir + '{}/{}.npy'.format(cls_name, video_name), np_file_flow)
+            print("{} flow stream saved".format(flow_save_dir+cls_name+"/"+video_name))
 
-    # SAVE 01
-    np_file_rgb=norm_rgb(frame_path,3)
-    np.save('data_input_rgb_{}.npy'.format(activity), np_file_rgb)
-    np_file_flow=norm_flow(frame_path,3)
-    np.save('data_input_flow_{}.npy'.format(activity), npy_file_flow)
-
-    # SAVE 02
-    npy_file=np.reshape(np.asarray(npy_flow),(1,len(flow),224,224,2)).astype(float)
-    np.save(".npy", npy_file)
-
-    # ((2*(npy_file-npy_file.min())/(npy_file.max()-npy_file.min()))-1)
-    #
-    # np.clip(npy_file,0,40).max()
-    #
-    # myarr=np.dstack([np.array([[10,9,6],[32,45,67],[909,456,786]]),np.array([[13,45,0],[67,89,12],[132,476,756]])])
-    # myarr
-    #
-    # xx=np.reshape(np.asarray(npy_flow),(1,70,224,224,2))
-    #
-    # plt.imshow(xx[0][2][:,:,1])
+            # SAVE 02
+            npy_file=np.reshape(np.asarray(npy_flow),(1,len(flow),224,224,2)).astype(float)
+            np.save(npyflow_save_dir + '{}/{}.npy'.format(cls_name, video_name), npy_file)
+            print("{} npyflow saved".format(npyflow_save_dir+cls_name+"/"+video_name))
+            # ((2*(npy_file-npy_file.min())/(npy_file.max()-npy_file.min()))-1)
+            #
+            # np.clip(npy_file,0,40).max()
+            #
+            # myarr=np.dstack([np.array([[10,9,6],[32,45,67],[909,456,786]]),np.array([[13,45,0],[67,89,12],[132,476,756]])])
+            # myarr
+            #
+            # xx=np.reshape(np.asarray(npy_flow),(1,70,224,224,2))
+            #
+            # plt.imshow(xx[0][2][:,:,1])
+'''
