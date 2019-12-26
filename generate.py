@@ -104,7 +104,6 @@ def norm_rgb(rgb_path, nchannel):
         npy_file.append(img_norm)
 
     npy_file = np.reshape(np.asarray(npy_file), (1, len(frames), 224, 224, nchannel))
-    np.save('data_input_rgb_{}.npy'.format(activity), npy_file)
     return npy_file
 
 
@@ -128,18 +127,18 @@ def norm_flow(rgb_path, nchannel):
     # npy_file=np.clip(npy_file,-20,20)
     # rescale betwwen [-1,1]
     npy_file = ((2 * (npy_file - npy_file.min()) / (npy_file.max() - npy_file.min())) - 1)
-    np.save('data_input_flow_{}.npy'.format(activity), npy_file)
     return npy_file
 
 
 if __name__ == "__main__":
     #name of activity what is in the video. This is just for purpose of creating proper folders.
-    activity='test'
+    activity='class'
 
     #This is the path where your video is kept. for simplicity rename the video same as activity. for eg. laughing.mp4
-    base_path='/home/veryyoung/문서/flow/train'
+    base_path = "/home/veryyoung/문서/optical_flow_extractor/data/Moments/"
+    # base_path='/home/veryyoung/문서/optical_flow_extractor/test'
 
-    create_paths(base_path, activity) # rgb, flow folder/u,v mkdir
+    create_paths(base_path + "/src", activity) # rgb, flow folder/u,v mkdir
 
     frame_path='/home/veryyoung/문서/flow/train/{}/{}_rgb/'.format(activity, activity) # rgb folder
     # flow_path='/home/veryyoung/문서/flow/train/{}/{}_flow/{}'.format(activity, activity, {}) # optical flow folder
@@ -162,8 +161,10 @@ if __name__ == "__main__":
     ##################################
 
     # SAVE 01
-    np_file=norm_rgb(frame_path,3)
-    np_file=norm_flow(frame_path,3)
+    np_file_rgb=norm_rgb(frame_path,3)
+    np.save('data_input_rgb_{}.npy'.format(activity), np_file_rgb)
+    np_file_flow=norm_flow(frame_path,3)
+    np.save('data_input_flow_{}.npy'.format(activity), npy_file_flow)
 
     # SAVE 02
     npy_file=np.reshape(np.asarray(npy_flow),(1,len(flow),224,224,2)).astype(float)
