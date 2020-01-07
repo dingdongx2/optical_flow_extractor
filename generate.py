@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 _IMAGE_SIZE = 256
 
 def cal_for_frames(video_path): # frame/test_rgb/
-    print("video path:", video_path)
     frames = glob(os.path.join(video_path, '*.jpg'))
     frames.sort()
 
@@ -20,12 +19,13 @@ def cal_for_frames(video_path): # frame/test_rgb/
     prev = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
     prev = cv2.resize(prev,(224,224))
     for i, frame_curr in enumerate(frames):
-        curr = cv2.imread(frame_curr)
-        curr = cv2.resize(curr,(224,224))
-        curr = cv2.cvtColor(curr, cv2.COLOR_BGR2GRAY)
-        tmp_flow = compute_TVL1(prev, curr)
-        flow.append(tmp_flow)
-        prev = curr
+        if i%5==0:
+            curr = cv2.imread(frame_curr)
+            curr = cv2.resize(curr,(224,224))
+            curr = cv2.cvtColor(curr, cv2.COLOR_BGR2GRAY)
+            tmp_flow = compute_TVL1(prev, curr)
+            flow.append(tmp_flow)
+            prev = curr
 
     return flow
 
@@ -94,8 +94,6 @@ def create_paths(base_path):
             os.mkdir(os.path.join(npyflow_dir, video))
             os.mkdir(os.path.join(rgb_dir, video))
 
-
-# def vid_to_image(base_path,file,frame_path): # train/       train/test.mp4          train/test/test_rgb/
 def vid_to_image(video_path, frame_path):
     print("video path:", video_path)
     print("frame path:", frame_path)
@@ -122,8 +120,6 @@ def vid_to_image(video_path, frame_path):
                 # print('Read a new frame: ', success)
                 count += 1
                 frame_no += 1
-
-
 
     '''
     # print("base path/file/frame_path", base_path, file, frame_path)
@@ -152,15 +148,19 @@ def norm_rgb(rgb_path, nchannel):
     frames = glob(os.path.join(rgb_path, '*.jpg'))
     frames.sort()
     # print(len(frames))
-    print("rgb_path:", rgb_path)
-    for frame in frames:
-        img = cv2.imread(frame)
-        img_new = (cv2.resize(img, (224, 224))).astype(float)
-        img_norm = np.divide(2 * (img_new - img_new.min()), (img_new.max() - img_new.min())) - 1
+    # print("rgb_path:", rgb_path)
+    for i, frame in enumerate(frames):
+        if i%5==0:
+            img = cv2.imread(frame)
+            img_new = (cv2.resize(img, (224, 224))).astype(float)
+            img_norm = np.divide(2 * (img_new - img_new.min()), (img_new.max() - img_new.min())) - 1
 
-        npy_file.append(img_norm)
+            npy_file.append(img_norm)
 
-    npy_file = np.reshape(np.asarray(npy_file), (1, len(frames), 224, 224, nchannel))
+    try:
+        npy_file = np.reshape(np.asarray(npy_file), (1, len(frames)//5, 224, 224, nchannel))
+    except:
+        npy_file = np.reshape(np.asarray(npy_file), (1, len(frames)//5+1, 224, 224, nchannel))
     return npy_file
 
 
@@ -170,7 +170,7 @@ def norm_flow(rgb_path, nchannel):
     #     npy_file=[]
     frames = glob(os.path.join(rgb_path, '*.jpg'))
     frames.sort()
-    print(len(frames))
+    # print(len(frames))
     #     for frame in frames:
     #         img=cv2.imread(os.path.join(frame_path,frame),0)
     #         #img=cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -179,8 +179,11 @@ def norm_flow(rgb_path, nchannel):
 
     #         npy_file.append(img_norm[:,:,:-1])
 
-    npy_file = np.reshape(np.asarray(npy_flow), (1, len(frames), 224, 224, nchannel - 1)).astype(float)
-    # clip between range [0,40]
+    try:
+        npy_file = np.reshape(np.asarray(npy_flow), (1, len(frames)//5, 224, 224, nchannel - 1)).astype(float)
+    except:
+        npy_file = np.reshape(np.asarray(npy_flow), (1, len(frames)//5+1, 224, 224, nchannel-1)).astype(float)    
+# clip between range [0,40]
     # npy_file=np.clip(npy_file,-20,20)
     # rescale betwwen [-1,1]
     npy_file = ((2 * (npy_file - npy_file.min()) / (npy_file.max() - npy_file.min())) - 1)
@@ -195,16 +198,16 @@ def mkdir(dir):
 
 if __name__ == "__main__":
 #     01. create class folder
-    base_path = "/home/veryyoung/문서/optical_flow_extractor/data_test"
+    #base_path = "/home/veryyoung/문서/optical_flow_extractor/extract"
+    base_path = "/home/hdd1/data/extract"
     src_path = os.path.join(base_path, "src")
     output_path = os.path.join(base_path, "output")
 
     cls_lists = glob(os.path.join(src_path, "*"))
     print("cls lists:", cls_lists, "\n")
-
+    '''
     for cls in cls_lists:
         cls_name = cls.split("/")[-1]
-        # output에 클래스 폴더 생성
         n_cls_path = os.path.join(output_path, cls_name)
         mkdir(n_cls_path)
 
@@ -214,12 +217,15 @@ if __name__ == "__main__":
             vid_name = v.split("/")[-1]
             print("\t> video:", vid_name)
             mkdir(os.path.join(n_cls_path, vid_name))
-
+    
     print("==*== mkdir fin! ==*==\n")
+    '''
+    cls_lists.sort()
 
 #     02. calculate optical flow
-    for cls in cls_lists:
+    for i, cls in enumerate(cls_lists):
         cls_name = cls.split("/")[-1]
+        print("class: {}/{}\t{}".format(i, len(cls_lists), cls_name))
         n_cls_path = os.path.join(output_path, cls_name)
 
         video_lists = glob(os.path.join(cls, "*"))
@@ -227,7 +233,7 @@ if __name__ == "__main__":
         for j, v in enumerate(video_lists):
             vid_name = v.split("/")[-1]
             des_path = os.path.join(n_cls_path, vid_name)
-            print("cal OF) in clss {}, video name({}/{}): {}".format(cls_name, j, len(video_lists), vid_name))
+            # print("cal OF) in clss {}, video name({}/{}): {}".format(cls_name, j, len(video_lists), vid_name))
 
             flow = cal_for_frames(v)
             # save flow
@@ -236,11 +242,11 @@ if __name__ == "__main__":
             # save at each dir
             np_file_rgb = norm_rgb(v, 3)
             np.save(des_path + '/rgb.npy', np_file_rgb)
-            np_file_flow = norm_flow(v, 3)
-            np.save(des_path + '/flow.npy', np_file_flow)
+            # np_file_flow = norm_flow(v, 3)
+            # np.save(des_path + '/flow.npy', np_file_flow)
             npy_file = np.reshape(np.asarray(npy_flow), (1, len(flow), 224, 224, 2)).astype(float)
-            np.save(des_path + '/npyflow.npy', npy_file)
-            print("")
+            np.save(des_path + '/flow.npy', npy_file)
+            # print("")
 
 
 
