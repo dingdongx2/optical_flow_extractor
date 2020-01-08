@@ -153,9 +153,9 @@ def norm_rgb(rgb_path, nchannel):
         if i%5==0:
             img = cv2.imread(frame)
             img_new = (cv2.resize(img, (224, 224))).astype(float)
-            img_norm = np.divide(2 * (img_new - img_new.min()), (img_new.max() - img_new.min())) - 1
-
-            npy_file.append(img_norm)
+            # img_norm = np.divide(2 * (img_new - img_new.min()), (img_new.max() - img_new.min())) - 1
+            npy_file.append(img_new)
+            # npy_file.append(img_norm)
 
     try:
         npy_file = np.reshape(np.asarray(npy_file), (1, len(frames)//5, 224, 224, nchannel))
@@ -196,6 +196,7 @@ def mkdir(dir):
     else:
         pass
 
+# 4:20
 if __name__ == "__main__":
 #     01. create class folder
     #base_path = "/home/veryyoung/문서/optical_flow_extractor/extract"
@@ -223,7 +224,7 @@ if __name__ == "__main__":
     cls_lists.sort()
 
 #     02. calculate optical flow
-    for i, cls in enumerate(cls_lists):
+    for i, cls in enumerate(cls_lists[16:]):
         cls_name = cls.split("/")[-1]
         print("class: {}/{}\t{}".format(i, len(cls_lists), cls_name))
         n_cls_path = os.path.join(output_path, cls_name)
@@ -235,18 +236,22 @@ if __name__ == "__main__":
             des_path = os.path.join(n_cls_path, vid_name)
             # print("cal OF) in clss {}, video name({}/{}): {}".format(cls_name, j, len(video_lists), vid_name))
 
-            flow = cal_for_frames(v)
-            # save flow
-            npy_flow = save_flow(flow)
+            tmp = glob.glob(des_path+"/*")
+            if des_path+"/flow.npy" in tmp:
+                pass
+            else:
+                flow = cal_for_frames(v)
+                # save flow
+                npy_flow = save_flow(flow)
 
-            # save at each dir
-            np_file_rgb = norm_rgb(v, 3)
-            np.save(des_path + '/rgb.npy', np_file_rgb)
-            # np_file_flow = norm_flow(v, 3)
-            # np.save(des_path + '/flow.npy', np_file_flow)
-            npy_file = np.reshape(np.asarray(npy_flow), (1, len(flow), 224, 224, 2)).astype(float)
-            np.save(des_path + '/flow.npy', npy_file)
-            # print("")
+                # save at each dir
+                # np_file_rgb = norm_rgb(v, 3)
+                # np.save(des_path + '/rgb.npy', np_file_rgb)
+                # np_file_flow = norm_flow(v, 3)
+                # np.save(des_path + '/flow.npy', np_file_flow)
+                npy_file = np.reshape(np.asarray(npy_flow), (1, len(flow), 224, 224, 2)).astype(float)
+                np.save(des_path + '/flow.npy', npy_file)
+                # print("")
 
 
 
