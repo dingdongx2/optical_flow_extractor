@@ -5,7 +5,7 @@ dir = "/home/hdd1/data/extract/output"
 clss = glob(dir + "/*")
 clss.sort()
 
-for cls in clss[:16]:
+for cls in clss[2:16]:
     print(cls)
     videos = glob(cls+"/*")
     for v in videos:

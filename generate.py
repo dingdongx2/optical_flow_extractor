@@ -238,6 +238,7 @@ if __name__ == "__main__":
 
             tmp = glob.glob(des_path+"/*")
             if des_path+"/flow.npy" in tmp:
+                print("already in", tmp)
                 pass
             else:
                 flow = cal_for_frames(v)
